@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:cross_file/cross_file.dart' show XFile;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:tus_client_dart/tus_client_dart.dart';
+import 'package:tus_client_plus/tus_client_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() {
@@ -91,18 +89,10 @@ class _UploadPageState extends State<UploadPage> {
                       onPressed: _file == null
                           ? null
                           : () async {
-                              final tempDir = await getTemporaryDirectory();
-                              final tempDirectory = Directory(
-                                  '${tempDir.path}/${_file?.name}_uploads');
-                              if (!tempDirectory.existsSync()) {
-                                tempDirectory.createSync(recursive: true);
-                              }
-
                               // Create a client
                               print("Create a client");
                               _client = TusClient(
                                 _file!,
-                                store: TusFileStore(tempDirectory),
                                 maxChunkSize: 512 * 1024 * 10,
                               );
 
@@ -114,7 +104,6 @@ class _UploadPageState extends State<UploadPage> {
                                 },
                                 onComplete: () async {
                                   print("Completed!");
-                                  tempDirectory.deleteSync(recursive: true);
                                   setState(() => _fileUrl = _client!.uploadUrl);
                                 },
                                 onProgress: (progress, estimate) {
@@ -227,15 +216,15 @@ class _UploadPageState extends State<UploadPage> {
   Future<XFile> _getXFile(FilePickerResult? result) async {
     if (result != null) {
       final chosenFile = result.files.first;
-      if (chosenFile.path != null) {
-        // Android, iOS, Desktop
-        return XFile(chosenFile.path!);
-      } else {
+      if (kIsWeb) {
         // Web
         return XFile.fromData(
           chosenFile.bytes!,
           name: chosenFile.name,
         );
+      } else if (chosenFile.path != null) {
+        // Android, iOS, Desktop
+        return XFile(chosenFile.path!);
       }
     }
     return XFile('');
