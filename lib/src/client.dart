@@ -249,10 +249,8 @@ class TusClient extends TusClientBase {
           throw ProtocolException(
               "Response to PATCH request contains no or invalid Upload-Offset header");
         }
-        if (_offset != serverOffset) {
-          throw ProtocolException(
-              "Response contains different Upload-Offset value ($serverOffset) than expected ($_offset)");
-        }
+        // Always updates the offset with the server offset
+        _offset = serverOffset;
 
         if (_offset == totalBytes && !_pauseUpload) {
           this.onCompleteUpload();
@@ -272,6 +270,10 @@ class TusClient extends TusClientBase {
       _actualRetry += 1;
       log('Failed to upload,try: $_actualRetry, interval: $waitInterval');
       await Future.delayed(waitInterval);
+
+      // Get up to date offset to avoid mismatched offsets
+      _offset = await _getOffset();
+
       return await _performUpload(
         onComplete: onComplete,
         onProgress: onProgress,
